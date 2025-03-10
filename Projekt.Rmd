@@ -1,0 +1,627 @@
+---
+title: "Analiza ataków terrorystycznych w latach 1970-2021"
+author: "Katarzyna Zyśko"
+
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+```
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(ggplot2)
+library(tidyr)
+library("writexl")
+library(tidyverse)
+library(dplyr)
+# Ścieżka do katalogu zawierającego pliki CSV
+path <- "C:/Users/Kasia/Desktop/Wizualizacja-projekt"
+
+# Wczytanie plików CSV
+df_gdp <- read.csv(file.path(path, "GDP3.csv"), row.names = NULL)
+df_pop <- read.csv(file.path(path, "population3.csv"), sep = ";")
+df_regions <- read.csv(file.path(path, "regions.csv"), row.names = NULL)
+df_attacks <- read.csv(file.path(path, "terrorist_attacks.csv"), row.names = NULL)
+
+df_pop= subset(df_pop, select = -c(IndicatorName, IndicatorCode) )
+df_pop = pivot_longer(df_pop, cols = starts_with("X"), names_to = "Year", values_to = "population")
+#head(df_pop, 20)
+df_pop$Year <- gsub("^.{0,1}", "", df_pop$Year)
+colnames(df_attacks)[colnames(df_attacks) == "Code"] ="CountryCode"
+#head(df_attacks)
+final_df = merge(x = df_attacks, y = df_pop, by = c("CountryCode", "Year"), all.x = TRUE)
+final_df = subset(final_df,CountryCode != '', select = -CountryName)
+#head(final_df,10)
+#mam połączony df z populacją
+
+#wczytanie i transformacja danych o GDP
+
+df_gdp = subset(df_gdp, select = -c(IndicatorName, IndicatorCode) )
+df_gdp = pivot_longer(df_gdp, cols = starts_with("X"), names_to = "Year", values_to = "gdp_per_capita")
+#head(df_gdp, 20)
+df_gdp$Year <- gsub("^.{0,1}", "", df_gdp$Year)
+#print(df_gdp, n=100)
+
+final_df = merge(x = final_df, y = df_gdp, by = c("CountryCode", "Year"), all.x = TRUE)
+final_df = subset(final_df,CountryCode != '', select = -CountryName)
+#head(final_df,100)
+#mam połączony df z gdp
+
+
+#wczytanie i transformacja informacji o regionie
+df_regions= subset(df_regions, select = c(alpha_3, region, sub_region) )
+#head(df_reg)
+colnames(df_regions)[colnames(df_regions) == "alpha_3"] ="CountryCode"
+
+final_df = merge(x = final_df, y = df_regions, by = c("CountryCode"), all.x = TRUE)
+
+
+#head(final_df,100)
+#colnames(final_df) <-c('Kod kraju','Rok','Państwo','Liczba ataków','Liczba ofiar','Porwanie,','Zakładnicy','Nierozbrojony atak','Atak na infrastrukturę obiektu','Porwanie i uprowadzenie zakładników','Zabójstwo','Uzbrojony atak','bombardowanie i eksplozja','Wiek 100 lat','Wiek 51-99','Wiek 21-55','Wiek 11-20','Wiek 6-10','Wiek 1-5','Typ śmierci terrorysty: samobójstwo','Typ śmierci terrorysty: zabity','Populacja','Dochód','Kontynent','Podregion')
+View(final_df)
+```
+
+
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">1)Cel projektu</span>')
+
+```
+
+
+Celem projektu jest przeprowadzenie szczegółowej analizy ataków terrorystycznych w latach 1970-2021, ze szczególnym uwzględnieniem podziału na kontynenty, regiony, metody ataków, liczbę ataków, liczbę ofiar, podział wiekowy ofiar oraz analizy według dekad. Głównym celem jest zidentyfikowanie wzorców i tendencji oraz zrozumienie specyfiki ataków terrorystycznych w różnych obszarach, okresach czasu i wykorzystywanych metodach.
+
+W projekcie zostały uwzględnione następujące zmienne:
+
+**1.Age-wiek:**
+
+-Death Age 1-5 - wiek od 1-5 lat
+
+-Death Age 6-10 - wiek od 6-10 lat
+
+-Death Age 11-20 - wiek od 11-20 lat
+
+-Death Age 21-50 - wiek od 21-50 lat
+
+-Death Age 51-99 - wiek od 51-99 lat
+
+-Death Age 100 - wiek 100 lat
+
+**2.Attack type-metoda ataku:**
+
+-Arrmed assault-Napaść z bronią w ręku
+
+-Assassination-Zamach
+
+-Bombing explosion-Eksplozja bombowa
+
+-Facility infrastructure attack-Atak na infrastrukturę obiektu
+
+-Hostage,taking,kidnapping-Uprowadzenie,porwanie
+
+-Hijacking-Porwanie środka tranportu
+
+
+**3.Region-kontynent:**
+
+-Africa-Afryka
+
+-Europe-Europa
+
+-Asia-Azja
+
+-Americas-Ameryka
+
+-Oceania-Oceania
+
+**4.Subregion-region:**
+
+-Eastern Asia- Azja Wschodnia
+
+-Central Asia- Azja Środkowa
+
+-Western Europe- Europa Zachodnia
+
+-Northern America- Ameryka Północna
+
+-Southern Europe- Europa Południowa
+
+-Eastern Europe- Europa Wschodnia
+
+-Northern Europe- Europa Północna
+
+-Northern Africa- Afryka Północna
+
+-South-eastern Asia- Południowo-wschodnia Azja
+
+-Latin-America and the Carribean- Ameryka Łacińska i Karaiby
+
+-Sub-Saharan Africa- Afryka Subsaharyjska
+
+-Western Asia- Azja Zachodnia
+
+-Southern Asia- Azja Południowa
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">2)Zakres analizy</span>')
+
+```
+
+
+Analiza będzie obejmować podział na kontynenty, regiony, metody ataków, analizę liczby ataków, liczby ofiar, podział wiekowy ofiar oraz analizę według dekad.
+
+**Analiza Przestrzenna:**
+
+Jak zmieniała się liczba ataków terrorystycznych w różnych regionach i subregionach na przestrzeni lat?
+
+Które regiony/subregiony doświadczyły największego wzrostu lub spadku liczby ataków?
+
+**Charakterystyka Ataków:**
+
+Jakie były najczęstsze metody przeprowadzania ataków terrorystycznych?
+
+**Skutki Ataków:**
+
+Jak rozkładały się skutki ataków terrorystycznych, z uwzględnieniem liczby ofiar, w poszczególnych krajach, regionach i subregionach?
+
+
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">3)Źródło danych</span>')
+
+```
+
+
+Dane zostały pobrane z platformy Kaggle, a dokładnie z "Terrorist Attacks Data Since 1970-2023". Zbiór danych zawiera informacje o atakach terrorystycznych od roku 1970 do 2021. Warto zaznaczyć, że do tej bazy danych zostały dodane niektóre informacje z innych źródeł w celu uzyskania pełniejszego obrazu zjawiska ataków terrorystycznych.
+
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">4)Przygotowanie danych</span>')
+
+```
+
+
+Dane zostały przygotowane, uwzględniając konieczne przekształcenia, usunięcie duplikatów i brakujących wartości, a także stworzenie agregacji danych na poziomie kontynentów, regionów, dekad oraz metod ataków.
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">5)Analiza</span>')
+
+```
+
+
+```{r,echo=FALSE, fig.width=10, fig.height=6,warning=FALSE,message=FALSE}
+library(ggplot2)
+library(viridis)
+
+df_age <- pivot_longer(final_df, cols = c(Death_Age_100, Death_Age_51_99_, Death_Age__21_50_, Death_Age__11_20_, Death_Age__6_10_, Death_Age___1_5), names_to = "Age", values_to = "Deaths")
+
+df_age <- subset(df_age, Entity != 'World' & region != '' & !sub_region %in% c('Polynesia','Melanesia','Australia and New Zealand'), select = c(Age, Deaths, sub_region, region))
+
+df_age$sub_region <- reorder(df_age$sub_region, df_age$Deaths, FUN = sum)
+
+colors <- c("red", "orange", "blue", "purple", "yellow", "black")
+
+ggplot(data = df_age, aes(x = sub_region, y = Deaths, fill = Age)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = colors) +
+  labs(
+    title = "Liczba ofiar w danym regionie w zależności od wieku",
+    x = "Region", y = "Liczba ofiar"
+  ) +
+  theme(
+    axis.title = element_text(size = 14),  
+    legend.text = element_text(size = 12),  
+    legend.title = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 18),  # Dostosowanie rozmiaru czcionki dla tytułu wykresu
+    axis.text = element_text(size = 10)  # Dostosowanie rozmiaru czcionki dla tekstu na osiach
+  )
+
+```
+
+
+Wykres przedstawia liczbę ofiar w różnych regionach w zależności od wieku. Dane obejmują kategorie wiekowe od 1 do 100 lat, a słupki reprezentują liczbę ofiar w poszczególnych grupach wiekowych. Kolory słupków odpowiadają poszczególnym przedziałom wiekowym. 
+
+Regiony takie jak: Eastern Asia(Azja Wschodnia), Central Asia(Azja Środkowa), Western Europe(Europa Zachodnia) i Northem America(Ameryka Północna) charakteryzują się bardzo niską liczbą ofiar, jedynie ofiary te są w przedziale wiekowym od 1-5 lat. 
+
+Z kolei Southern Europe(Europa Południowa), Eastern Europe(Europa Wschodnia) i Northem Europe(Europa Pólnocna) posiadają wartości nieco większe, sięgające w przypadku Northem Europe do około 250 liczby ofiar, ofiary te są w przedziale wiekowym od 1 do 5 lat, a tylko w przypadku Eastern Europe(Europy Wschodniej) można zauważyć bardzo małą liczbę ofiar w wieku 21-50 lat. 
+
+Dwa regiony: Northem Africa(Afryka Północna) i South-eastern Asia(Południowo-zachodnia Azja) mają podobną liczbę ofiar w przedziale wiekowym od 6-10 lat wynoszącą około 80 ofiar, zbliżoną liczbę ofiar w wieku 11-20 lat i tak jak we wcześniejszych regionach pozostała część ofiar śmiertelnych znajduje się w wieku 1-5 lat. 
+
+W Latin America and the Caribbean(Ameryka Łacińska i Karaiby) i Sub-Saharan Africa(Afryka Subsaharyjska) przeważa liczba ofiar w wieku od 1-5 lat, mniejszy udział w ogólnej liczbie ofiar mają dzieci w wieku 6-10 lat, następnie osoby w wieku 11-20 lat, a najmniejszy mają osoby w przedziale wiekowym od 21-50. W przypadku Sub-Saharan Africa można zauważyć bardzo niską liczbę ofiar w wieku 51-99 jak i w wieku 100 lat.
+
+Największą liczbą ofiar wyróżniają się dwa regiony: Western Asia(Azja Zachodnia) i Southern Asia(Azja Południowa). Te dwa regiony charakteryzują się największą liczbą ofiar śmiertelnych dzieci w wieku od 1-5 lat, mniej jest ofiar w wieku 6-10 lat, ofiary w wieku 11-20 również mają mały udział w ogólnej liczbie ofiar, a najmniejszy udział mają ofiary w wieku 21-50 nie wliczając w to bardzo małej ilości ofiar w wieku 51-99, która utrzymuje się na poziomie i jest bliska 0.  
+
+**Wnioski:**
+
+1.Istnieją istotne różnice w liczbie ofiar między regionami.
+
+2.We wszystkich regionach dominują ofiary w przedziale wiekowym od 1 do 5 lat.
+
+3.Niektóre regiony, takie jak Western Asia(Azja Zachodnia) i Southern Asia(Azja Południowa), charakteryzują się wyjątkowo wysoką liczbą ofiar w tej grupie wiekowej.
+
+4.Eastern Europe wyróżnia się niższą liczbą ofiar w wieku 21-50 lat, co może być rezultatem specyficznych warunków tego obszaru.
+
+
+```{r, echo=FALSE, fig.width=10, fig.height=6,warning=FALSE}
+df_attack_method = subset(final_df, Entity=='World')
+names(df_attack_method) <- sub('^Attack_method_', '', names(df_attack_method))
+#head(df_attack_method)
+df_attack_method = pivot_longer(df_attack_method, cols=c(Hijacking, Facility_Infrastructure_Attack, Hostage_Taking__Kidnapping, Assassination, Armed_Assault, Bombing_Explosion), names_to = "Attack_type", values_to = "Attacks_number")
+
+ggplot(df_attack_method, aes(x=Year, y=Attacks_number, group=Attack_type, color=Attack_type)) + geom_line()+ theme(legend.position="bottom") +
+  labs(title = "Liczba ataków na przestrzeni lat",
+       x="Lata",y="Liczba ataków") +
+  theme(axis.title = element_text(size = 16),  
+        plot.title = element_text(size = 18),
+        axis.text = element_text(size = 14),   
+        legend.text = element_text(size = 14), 
+        legend.title = element_text(size = 16)) 
+
+```
+
+
+
+Wykres przedstawia liczbę ataków terrorystycznych na przestrzeni lat, z podziałem na różne metody ataku. Analiza obejmuje lata od 1970 do 2021.
+
+Metoda Bombing Explosion(eksplozja bombowa) wykazuje wyraźną tendencję wzrostową, osiągając swoje apogeum w 2014 roku.
+W 2014 roku liczba ataków tego typu osiągnęła najwyższą wartość na wykresie, sugerując koncentrację tego rodzaju działań terrorystycznych w tamtym okresie.
+Należy zauważyć, że od tego czasu metoda ta wykazuje tendencję spadkową, co może być rezultatem skuteczniejszych działań antyterrorystycznych lub zmian w taktykach terrorystycznych.
+
+Podobnie jak Bombing Explosion, metoda Armed Assault (napaść z bronią w ręku) miała swoje maksimum w 2014 roku, co wskazuje na rosnącą aktywność terrorystyczną tego typu w tamtym okresie.
+Jednak liczba ataków tego rodzaju wykazuje wyraźną tendencję spadkową od 2014 roku, co może świadczyć o zmniejszeniu się skali tego rodzaju działań lub skuteczniejszych działaniach antyterrorystycznych.
+
+W początkowym okresie, od lat 1970 do około 1990,w metodzie Assassination (zamach) obserwujemy wyraźny wzrost liczby ataków. Jednakże, po przełomie 1990 roku zaczęła tendencję malejącą. Apogeum liczby ataków tego typu osiągnęło w 2014 roku, co stanowi istotne odniesienie dla wielu metod ataków terrorystycznych w tym okresie. Po 2014 roku jak i inne metody miała tendencję malejącą. 
+
+Obie metody: Hostage,Taking,Kidnapping i Facility Infrastructure Attack (uprowadzenie i atak na infrastrukturę obiektu), wykazywały tendencję wzrostową do 2014 roku, osiągając apogeum, po czym nastąpił spadek liczby ataków.
+
+Metoda Hijacking (porwanie środka transportu) przez cały okres 1970-2021 utrzymywała się na bardzo niskim poziomie w porównaniu do innych metod.
+
+**Wnioski:**
+
+**1)Zmienność w czasie:**
+
+W analizowanym okresie, zwłaszcza w 2014 roku, obserwujemy dynamiczne zmiany w liczbie ataków terrorystycznych.
+Skoncentrowane w czasie wzrosty i spadki sugerują, że skuteczność działań antyterrorystycznych oraz ewolucja taktyk terrorystycznych mogą znacząco wpływać na dynamikę ataków.
+
+**2)Rozmaitość metod:**
+
+Zróżnicowanie metod ataków wskazuje na elastyczność i złożoność działań terrorystycznych.
+Tendencje różnych metod mogą wynikać z dostępności środków, taktyk organizacji terrorystycznych czy reakcji społeczności międzynarodowej.
+
+**3)Wyjątkowa rola roku 2014:**
+
+Rok 2014 wydaje się kluczowy dla wielu metod ataków, co może być rezultatem zmian w globalnym krajobrazie politycznym lub innym czynnikiem wpływającym na dynamikę terroryzmu.
+
+
+
+
+
+
+
+```{r, echo=FALSE, fig.width=10, fig.height=6,warning=FALSE}
+library(ggplot2)
+library(dplyr)
+
+
+temp_df <- subset(df_attack_method, select = c(Attack_type, Attacks_number))
+
+temp_df2 <- temp_df %>%
+  group_by(Attack_type) %>%
+  summarise(
+    sum(Attacks_number)
+  )
+
+temp_df_perc <- temp_df2 %>%
+  mutate(Attack_typ = factor(Attack_type, levels = Attack_type[order(-`sum(Attacks_number)`)]),
+         labels = paste0(round((`sum(Attacks_number)` / sum(`sum(Attacks_number)`)) * 100, 1), "%"))
+
+my_colors <- c("green", "blue", "orange", "yellow", "red", "purple")
+
+ggplot(temp_df_perc, aes(x = "", y = `sum(Attacks_number)`, fill = Attack_type)) +
+  geom_col() +
+  geom_text(aes(label = labels),
+            position = position_stack(vjust = 0.5),
+            size = 4,  
+            color = "black") +  
+  scale_fill_manual(values = my_colors) +  
+  coord_polar(theta = "y") +
+  labs(x = "", y = "", title = "Procentowy udział różnych rodzajów ataków ") +
+  theme(plot.title = element_text(hjust = 0.5, size = 18),
+        legend.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.text = element_text(size = 12),  
+        axis.text = element_text(size = 12))  
+options(dplyr.summarise.inform = FALSE)
+
+```
+
+
+
+
+
+
+
+
+
+Na wykresie kołowym przedstawiającym procentowy udział różnych rodzajów ataków terrorystycznych możemy zauważyć dominację pewnych metod, co dostarcza istotnych informacji na temat preferencji i strategii terrorystów.
+
+Najczęstszą metodą ataków jest wykorzystanie bomb i eksplozji (51% udziału), co sugeruje skłonność do używania tego typu skutecznych, lecz niebezpiecznych środków.
+
+Drugie miejsce zajmuje atak uzbrojony (24,1%), co wskazuje na wykorzystywanie broni palnej i bezpośrednich konfrontacji jako skutecznej strategii osiągania celów.
+
+Metoda zamachów i zabójstw (10,8%) stanowi znaczący odsetek, co sugeruje, że terroryści preferują ukierunkowane i planowane działania.
+
+Ataki związane z porwaniami i uprowadzeniami (7,4%) są kolejną istotną taktyką, wskazując na gotowość do stosowania tego rodzaju działań wymuszających.
+
+Ataki na obiekty infrastrukturalne (6,4%) stanowią mniejszy, lecz istotny odsetek, co może wiązać się z planowaniem ataków na ważne struktury.
+
+Najrzadszym rodzajem ataku jest porwanie środka transportu (0,4%), co mimo niewielkiego odsetka może prowadzić do sytuacji o wysokim ryzyku.
+
+Podsumowując, analiza procentowego udziału różnych metod ataków dostarcza ważnych wskazówek dla służb antyterrorystycznych, umożliwiając dostosowanie strategii przeciwdziałania do najbardziej dominujących zagrożeń.
+
+
+
+
+```{r,fig.width=10, fig.height=6,echo=FALSE,warning=FALSE}
+library(viridis)
+
+region_df <- subset(final_df, Entity != 'World')
+region_df <- region_df %>%
+  group_by(region, Year) %>%
+  summarise(sum(Terrorism_deaths))
+
+region_df <- na.omit(region_df)
+
+moje_kolory <- c("Asia" = "red", "Europe" = "lightblue", "Africa" = "darkgreen", "Americas" = "orange",  "Oceania" = "brown")
+
+
+ggplot(region_df, aes(x = Year, y = `sum(Terrorism_deaths)`, fill = region)) +
+  geom_area() +
+  scale_fill_manual(values = moje_kolory) +  
+  theme_minimal(base_size = 16) +  
+  labs(title = 'Liczba ofiar w latach 1970-2021', x = 'Lata', y = 'Liczba ofiar', title_size = 18) +  
+  theme(axis.text.x = element_text(size = 14),  
+        axis.text.y = element_text(size = 14),  
+        legend.text = element_text(size = 12),  
+        legend.title = element_text(size = 14)) 
+
+```
+
+
+
+Z powyższego wykresu można zauważyć, że w Ameryce najwięcej ofiar ataków terrosytcznych miało miejsce w latach od 1980-1990, po tym roku liczba ofiar znacznie spadła. Około 2000 roku liczba ofiar miała chwilowy wzrost, po którym nastąpił spadek, a w kolejncyh latach liczba zaczęła znów rosnąć osiągając swoją największą wartość w 2014 roku, po tym roku następuje spadek liczby ofiar w tym regionie, lecz wciąż utrzymuje sie na wysokim poziomie. 
+
+W Europie od początku lat 70 XX wieku liczba ofiar ataków terrorystycznych utrzymuje się na niskim poziomie, minimalny wzrost liczby ofiar można zauważyć w okolicach roku 2014. 
+
+Na wykresie nie ma przedstawionych danych dotyczących Oceanii, ponieważ liczba ofiar ataków terrorystycznych jest bliska 0. 
+
+W Azji od 1970 do 1993 roku widać znaczącą niewielką tendecję wzrostową, od 1993 nastąpił spadek liczby ofiar do roku około 2003, po tym roku nastąpił wzrost, a po roku około 2012 wystąpił gwałtowny wzrost, który swoje apogeum osiągnął w roku 2014.
+
+W latach 1970-1990 Afryka ma zbliżone warrtości liczby ofiar jak w Ameryce, przez kolejne lata nastąpiły znaczące wzrosty i spadki, a po roku około 2012 wystąpił gwałtowny wzrost, który utrzymywał się do 2014 roku. Po tym roku występuje tendencja spadkowa, jednakże liczba ofiar jest na wysokim poziomie.
+
+
+
+
+
+```{r,echo=FALSE, fig.width=12, fig.height=8,warning=FALSE}
+suppressPackageStartupMessages({
+  library(viridis)
+  library(purrr)
+  library(maps)
+})
+library(ggplot2)
+library(dplyr)
+library(maps)
+library(mapdata)
+
+final_df$terrorism_deaths_per_million_habitants <- with(final_df, Terrorism_deaths/population*1000000)
+
+df <- final_df
+df$decade_start <- with(df, Year - Year %% 10)
+df$decade_end <- with(df, decade_start + 10)
+df$decade <- paste0(as.character(df$decade_start), "-", as.character(df$decade_end))
+
+# Odfiltrowanie dekady
+df_subset <- df %>% filter(decade == '1970-1980')
+# Zsumowanie 
+df_subset_aggr <- df_subset %>% group_by(Entity)  %>%
+                    summarise(terrorism_deaths_per_million_habitants = sum(terrorism_deaths_per_million_habitants),
+                              Terrorist_attacks = sum(Terrorist_attacks))
+
+world_map <- map_data("world")
+# Mapowanie wartości do poprawnego połączenia zbiorów
+world_map$region[world_map$region == "USA"] <- "United States"
+world_map$region[world_map$region == "UK"] <- "United Kingdom"
+world_map$region[world_map$region == "Czech Republic"] <- "Czechia"
+world_map$region[world_map$region == "Ivory Coast"] <- "Cote d'Ivoire"
+world_map$region[world_map$region == "Democratic Republic of the Congo"] <- "Democratic Republic of Congo"
+
+mapa_dane <- left_join(world_map, df_subset_aggr, by = c("region" = "Entity"))
+
+mapa_dane <- mapa_dane %>% filter(region != 'Iraq')
+
+my_breaks <- c(1, 2, 4, 6, 8, 10, 15, 20, 30, 40, 50)
+ggplot(mapa_dane, aes(x = long, y = lat, group = group, fill = terrorism_deaths_per_million_habitants)) +
+  geom_polygon() +
+  scale_fill_viridis_b(name = "Liczba ofiar", breaks = my_breaks) +
+  theme_minimal(base_size = 16) +  
+  labs(title = "Liczba ofiar śmiertelnych na milion mieszkańców w dekadzie 1970-1980", caption = " ") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, keywidth = 1.5, keyheight = 1.5, label.theme = element_text(size = 14))) +
+  theme(text = element_text(size = 14),  
+        plot.title = element_text(size = 18, face = "bold"),  
+        legend.text = element_text(size = 14),  
+        legend.title = element_text(size = 16),  
+        axis.title = element_blank(),
+        axis.text = element_blank(),  
+    axis.ticks = element_blank())  
+
+```
+
+
+Mapa ukazuje zróżnicowanie liczby zgonów na milion mieszkańców w latach 1970-1980 związanych z aktami terroryzmu na skalę światową. Większość krajów prezentuje niskie lub bardzo niskie wartości, co odzwierciedla względną stabilność w tym okresie. Niemniej jednak, warto zwrócić uwagę na obszary, które wyróżniają się wysokimi wskaźnikami ofiar.
+
+Najważniejsze obszary obejmują Amerykę Łacińską, gdzie Argentyna i Kolumbia doświadczyły wyraźnego wzrostu liczby ofiar na milion mieszkańców, co wskazuje na intensywność działań terrorystycznych w tych regionach. Bliski Wschód, a szczególnie Iran, również prezentuje znaczący wpływ terroryzmu na liczbę zgonów.
+
+W Europie, pomimo ogólnej tendencji do niskich wartości, Wielka Brytania i Hiszpania wyróżniają się wyższą liczbą ofiar, co może być wynikiem działań terrorystycznych w tamtym okresie. Również w Afryce, Namibia charakteryzuje się nietypowo wysokim wskaźnikiem ofiar na milion mieszkańców, co sugeruje specyficzne wydarzenia lub konflikty w regionie.
+
+Ameryka Środkowa, a zwłaszcza Nikaragua, jest kolejnym obszarem wartym uwagi, charakteryzującym się jedną z najwyższych liczb ofiar. Państwa, dla których nie były dostępne dane, takie jak ZSRR, NRD, Mongolia czy Oman, zostały zaznaczone na szaro na mapie z powodu braku informacji.
+
+Analiza tej mapy pozwala zidentyfikować obszary o różnej dynamice w zakresie aktów terrorystycznych, wskazując na specyficzne konteksty społeczno-polityczne, które mogły wpłynąć na poziom zagrożenia i liczbę ofiar w poszczególnych regionach.
+
+```{r,echo=FALSE, fig.width=12, fig.height=8}
+library(ggplot2)
+library(dplyr)
+library(maps)
+library(mapdata)
+
+final_df$terrorism_deaths_per_million_habitants <- with(final_df, Terrorism_deaths/population*1000000)
+
+df <- final_df
+df$decade_start <- with(df, Year - Year %% 10)
+df$decade_end <- with(df, decade_start + 10)
+df$decade <- paste0(as.character(df$decade_start), "-", as.character(df$decade_end))
+
+# Odfiltrowanie dekady
+df_subset <- df %>% filter(decade == '2010-2020')
+# Zsumowanie 
+df_subset_aggr <- df_subset %>% group_by(Entity)  %>%
+                    summarise(terrorism_deaths_per_million_habitants = sum(terrorism_deaths_per_million_habitants),
+                              Terrorist_attacks = sum(Terrorist_attacks))
+
+world_map <- map_data("world")
+# Mapowanie wartości do poprawnego połączenia zbiorów
+world_map$region[world_map$region == "USA"] <- "United States"
+world_map$region[world_map$region == "UK"] <- "United Kingdom"
+world_map$region[world_map$region == "Czech Republic"] <- "Czechia"
+world_map$region[world_map$region == "Ivory Coast"] <- "Cote d'Ivoire"
+world_map$region[world_map$region == "Democratic Republic of the Congo"] <- "Democratic Republic of Congo"
+
+mapa_dane <- left_join(world_map, df_subset_aggr, by = c("region" = "Entity"))
+
+mapa_dane <- mapa_dane %>% filter(region != 'Iraq')
+
+my_breaks <- c(1, 2, 4, 6, 8, 10, 15, 20, 30, 40, 50)
+ggplot(mapa_dane, aes(x = long, y = lat, group = group, fill = terrorism_deaths_per_million_habitants)) +
+  geom_polygon() +
+  scale_fill_viridis_b(name = "Liczba ofiar", breaks = my_breaks) +
+  theme_minimal(base_size = 16) +  
+  labs(title = "Liczba ofiar na milion mieszkańców w dekadzie 2010-2020", caption = " ") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, keywidth = 1.5, keyheight = 1.5, label.theme = element_text(size = 14))) +
+  theme(text = element_text(size = 14),  
+        plot.title = element_text(size = 18, face = "bold"),  
+        legend.text = element_text(size = 14),  
+        legend.title = element_text(size = 16),  
+        axis.title = element_blank(),
+        axis.text = element_blank(),  # Dodane, aby ukryć liczby na osiach OX i OY
+    axis.ticks = element_blank())  
+
+```
+
+
+Mapa prezentuje zmieniony krajobraz liczby zgonów na milion mieszkańców w latach 2010-2020 związanych z aktami terroryzmu. W porównaniu do wcześniejszego okresu, obserwujemy nowe trendy, szczególnie w kontekście różnych regionów świata.
+
+**Azja:**
+W Azji utrzymuje się średni poziom liczby zabitów na milion mieszkańców. Obszar ten charakteryzują się relatywnie stabilną sytuacją pod względem terroryzmu w analizowanym okresie.
+
+**Europa, Ameryka i Australia:**
+Europa, Ameryka i Australia nadal utrzymują niską liczbę ofiar na milion mieszkańców, co może świadczyć o skutecznych środkach bezpieczeństwa i kontroli.
+
+**Afryka:**
+W Afryce obserwujemy drastyczną zmianę. Państwa Afryki Środkowej doświadczają bardzo wysokiej liczby ofiar, podczas gdy Południowa i Północno-Zachodnia Afryka utrzymują stosunkowo niskie wskaźniki.
+
+**Zmiany w Innych Regionach:**
+Ciekawym zjawiskiem jest znaczny wzrost liczby ofiar na Nowej Zelandii i Filipinach. Jednocześnie na Ukrainie, w Pakistanie, Uzbekistanie i Jemenie zaobserwowano znaczący wzrost liczby zabitych, co może odzwierciedlać zmieniający się kontekst polityczny i społeczny w tych regionach.
+
+
+
+
+```{r,echo=FALSE, fig.width=12, fig.height=8}
+final_df$decade_start <- with(df,Year - Year %% 10)
+final_df$decade_end <- with(df,decade_start + 10)
+final_df$decade<-paste0(as.character(df$decade_start),"-", as.character(df$decade_end))
+
+df_scatt_aggr = final_df %>% group_by(region, decade)  %>%
+                    summarise(Terrorism_deaths = sum(Terrorism_deaths),
+                              Terrorist_attacks = sum(Terrorist_attacks))
+df_scatt_aggr$sum <- with(df_scatt_aggr, Terrorism_deaths + Terrorist_attacks)
+df_scatt_aggr <- df_scatt_aggr %>% filter(sum > 0 & region != '')
+
+
+#ggplot(df_scatt_aggr, aes(x=Terrorism_deaths, y=Terrorist_attacks, color=region, shape=decade)) + geom_point() 
+ ggplot(df_scatt_aggr, aes(x = Terrorism_deaths, y = Terrorist_attacks, color = region, shape = decade)) +
+  geom_point(alpha = 0.7) +
+  labs(x = "Liczba Zgonów",
+       y = "Liczba Ataków Terrorystycznych",
+       title = "Relacja między Zgonami a Atakami Terrorystycznymi w Dekadach i Regionach") +
+  theme_minimal(base_size=16) +
+  facet_wrap(~region, scales = "free") +
+  theme(legend.text = element_text(size = 12),  
+        legend.title = element_text(size = 14),  
+        axis.title.x = element_text(size = 14), 
+        axis.title.y = element_text(size = 14),  
+        plot.title = element_text(size = 16, face = "bold"),
+        text = element_text(size = 12))  
+
+
+```
+
+Wykres przedstawia relację między liczbą zgonów a liczbą ataków terrorystycznych w różnych dekadach i regionach świata, wykorzystując scatter plot podzielony na pięć paneli.
+
+Afryka:
+Największa relacja między liczbą zgonów a liczbą ataków terrorystycznych wystąpiła w dekadzie 2010-2020, osiągając wysokie wartości, podczas gdy najmniejsza relacja była obserwowana w latach 1970-1980.
+
+Ameryka:
+Największa relacja między liczbą zgonów a liczbą ataków przypadała na dekadę 1980-1990, a najmniejsza na lata 2000-2010. Widoczna jest istotna zmienność w relacji między zgonami a atakami terrorystycznymi w poszczególnych dekadach.
+
+Azja:
+Najwyższa relacja między zgonami a liczbą ataków występowała w dekadzie 2010-2020, co może wynikać z różnorodności geograficznej i społecznej tego obszaru. Wzrost zarówno w liczbie ataków, jak i zgonów, jest zauważalny w porównaniu do lat 70. XX wieku.
+
+Europa:
+Największa relacja między liczbą zgonów a liczbą ataków przypada na dekadę 2010-2020, sugerując znaczny wzrost skali i skutków ataków terrorystycznych w ostatnich latach.
+
+Oceania:
+Relacja między liczbą zgonów a liczbą ataków osiągała najwyższe wartości w dekadzie 1990-2000, co może być związane z pewnymi specyficznymi wydarzeniami na tym obszarze w tym okresie.
+
+**Wnioski:**
+W większości regionów, relacja między zgonami a atakami terrorystycznymi rośnie wraz z upływem czasu, zwłaszcza w najnowszych dekadach. Sugeruje to zwiększającą się skalę i skutki ataków terrorystycznych, co stanowi wyzwanie dla działań mających na celu ich zapobieganie i zwalczanie.
+
+```{r}
+library(htmltools)
+HTML('<span style="font-size:24px; font-weight:bold;">6)Podsumowanie</span>')
+
+```
+
+
+Projekt analizy ataków terrorystycznych w latach 1970-2021 przyniósł interesujące spostrzeżenia na temat dynamiki i wzorców tego zjawiska na różnych kontynentach i w różnych okresach czasu. Zastosowanie różnych analiz przestrzennych i tematycznych pozwoliło lepiej zrozumieć specyfikę ataków terrorystycznych oraz ich wpływ na społeczeństwa na całym świecie.
+
+W powyższej analizie można było zauważyć, że między innymi liczba ataków, jak i liczba ofiar była znacząco wyższa w 2014 roku, było to spowodowane m.in.:
+
+Syria i konflikty w regionie Bliskiego Wschodu: W 2014 roku trwała wojna domowa w Syrii, która przyciągnęła uwagę międzynarodową. Sytuacja ta mogła sprzyjać aktywności terrorystycznej i wzrostowi liczby ataków.
+
+Działania ISIS: W 2014 roku Państwo Islamskie (ISIS) zdobyło znaczną uwagę światową, ogłaszając utworzenie kalifatu. Organizacja ta przeprowadzała liczne ataki terrorystyczne w Iraku, Syrii i innych regionach, co mogło wpłynąć na globalne statystyki ataków.
+
+Zmieniający się krajobraz polityczny: W latach 2014-2015 miały miejsce różne wydarzenia polityczne, takie jak zmiana władzy w Iraku, konflikt wewnętrzny na Ukrainie czy wzrost aktywności talibów w Afganistanie. Te zdarzenia mogły przyczynić się do zwiększenia liczby ataków terrorystycznych.
+
+Wpływ mediów społecznościowych: Wzrost dostępności mediów społecznościowych i ich rola w komunikacji globalnej mogły sprawić, że ataki terrorystyczne stały się bardziej widoczne i szybko się rozprzestrzeniały, co mogło wpłynąć na zwiększenie raportowanych przypadków.
+
+Złożoność terroryzmu globalnego: Terroryzm jest zjawiskiem złożonym, a liczba ataków zależy od wielu czynników, takich jak konflikty regionalne, nierówności społeczne, skrajne ideologie czy działania grup ekstremistycznych. Wzrost liczby ataków w 2014 roku może być wynikiem skomplikowanego zestawu czynników.
+
+**Wnioski:**
+
+Zróżnicowanie regionalne: Analiza liczby ataków i ofiar w poszczególnych regionach wykazała istotne zróżnicowanie. Niektóre obszary, takie jak Azja Południowa i Zachodnia, czy Bliski Wschód, doświadczyły znaczących wzrostów liczby ofiar, podczas gdy inne, jak Europa, utrzymywały stosunkowo niskie poziomy.
+
+Tendencje czasowe: Wzrost liczby ataków terrorystycznych w latach 2010-2021, zwłaszcza w Afryce, stanowi istotny trend. Spadek liczby ofiar w regionie Europy w ostatnich latach może być wynikiem skuteczniejszych środków bezpieczeństwa.
+
+Różnice wiekowe: Analiza wieku ofiar pozwoliła zidentyfikować obszary, gdzie dzieci są szczególnie narażone, jak Southern Asia(Azja Południowa) czy Western Asia(Azja Zachodnia). To ważne spostrzeżenie dla działań prewencyjnych i ochrony najbardziej podatnych grup społecznych.
+
+Metody ataków: Wykres procentowego udziału różnych metod ataków pokazał, że bombowanie i eksplozje dominują, co sugeruje skłonność terrorystów do stosowania skutecznych, lecz niebezpiecznych środków.
+
+Relacja między zgonami a atakami: Analiza scatter plot dla różnych dekad i regionów ukazała, że relacja między liczbą zgonów a atakami rośnie wraz z upływem czasu, co może świadczyć o zwiększającym się wpływie ataków terrorystycznych na społeczeństwo.
+
